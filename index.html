@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      SEPLAN - Estudo Técnico – Redução de Despesas com Suprimento de Fundos
+    </title>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      :root {
+        --primary: #005a9c;
+        --secondary: #e94e77;
+        --accent: #f5b700;
+        --bg: #f9f9f9;
+        --text: #333333;
+        --bg-dark: #1e1e1e;
+        --text-dark: #e0e0e0;
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        font-family: "Segoe UI", Tahoma, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+        line-height: 1.6;
+        transition: background 0.3s, color 0.3s;
+        position: relative;
+        padding-top: 4px;
+      }
+      body.dark {
+        background: var(--bg-dark);
+        color: var(--text-dark);
+      }
+      /* Progress bar */
+      #progressBar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 4px;
+        background: var(--accent);
+        width: 0;
+        z-index: 1000;
+        transition: width 0.1s;
+      }
+      header {
+        background: var(--primary);
+        color: #fff;
+        padding: 1rem 2rem;
+        text-align: center;
+        position: sticky;
+        top: 4px;
+        z-index: 999;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+      header h1 {
+        font-size: 1.5rem;
+      }
+      header .controls {
+        display: flex;
+        gap: 0.5rem;
+      }
+      header button {
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 0.5rem;
+      }
+      /* Sidebar */
+      #sidebar {
+        position: fixed;
+        top: 0;
+        left: -250px;
+        width: 250px;
+        height: 100%;
+        background: var(--secondary);
+        padding: 2rem 1rem;
+        transition: left 0.3s;
+        z-index: 998;
+        overflow-y: auto;
+      }
+      #sidebar.open {
+        left: 0;
+      }
+      #sidebar nav a {
+        display: block;
+        color: #fff;
+        text-decoration: none;
+        margin-bottom: 1rem;
+        font-weight: bold;
+      }
+      #sidebar nav a.active,
+      #sidebar nav a:hover {
+        color: var(--accent);
+      }
+      #menuToggle {
+        display: none;
+        background: none;
+        border: none;
+        color: #fff;
+        font-size: 1.5rem;
+        cursor: pointer;
+      }
+      /* Back to top */
+      #backToTop {
+        position: fixed;
+        bottom: 1rem;
+        right: 1rem;
+        background: var(--primary);
+        color: #fff;
+        border: none;
+        padding: 0.5rem;
+        border-radius: 50%;
+        font-size: 1.25rem;
+        cursor: pointer;
+        display: none;
+        z-index: 1000;
+      }
+      main {
+        padding: 2rem;
+        max-width: 900px;
+        margin: auto;
+      }
+      section {
+        margin-bottom: 2rem;
+        opacity: 0;
+        transform: translateY(20px);
+        transition: opacity 0.6s ease, transform 0.6s ease;
+      }
+      section.visible {
+        opacity: 1;
+        transform: translateY(0);
+      }
+      h2 {
+        font-size: 1.75rem;
+        margin-bottom: 1rem;
+        color: var(--secondary);
+        border-bottom: 3px solid var(--accent);
+        display: inline-block;
+      }
+      h3 {
+        font-size: 1.25rem;
+        margin-top: 1rem;
+        color: var(--primary);
+      }
+      p {
+        margin-top: 1rem;
+      }
+      ul {
+        list-style-type: disc;
+        padding-left: 1.5rem;
+        margin-top: 1rem;
+      }
+      li {
+        margin-bottom: 0.5rem;
+      }
+      .highlight {
+        color: var(--accent);
+        font-weight: bold;
+      }
+      .chart-container {
+        background: #fff;
+        padding: 1rem;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-top: 1rem;
+      }
+      #toast {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        background: var(--primary);
+        color: #fff;
+        padding: 0.75rem 1.5rem;
+        border-radius: 4px;
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 0.3s ease;
+        z-index: 1000;
+      }
+      #toast.show {
+        opacity: 1;
+        pointer-events: auto;
+      }
+      #printBtn {
+        background: var(--accent);
+        border: none;
+        color: #fff;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.9rem;
+      }
+      a:focus,
+      button:focus {
+        outline: 3px dashed var(--accent);
+        outline-offset: 2px;
+      }
+      @media (max-width: 768px) {
+        #menuToggle {
+          display: block;
+        }
+        #sidebar {
+          width: 200px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="progressBar" aria-hidden="true"></div>
+    <header role="banner">
+      <button id="menuToggle" aria-label="Abrir menu">☰</button>
+      <h1>
+        SEPLAN - Estudo Técnico - Redução de Despesas com Suprimento de Fundos
+      </h1>
+      <div class="controls">
+        <button id="themeToggle" aria-label="Alternar tema claro/escuro">
+          🌓
+        </button>
+        <button id="printBtn" aria-label="Imprimir relatório">🖨️</button>
+      </div>
+    </header>
+    <aside id="sidebar" role="navigation" aria-label="Menu principal">
+      <nav>
+        <a href="#introducao">Introdução</a>
+        <a href="#diagnostico">Diagnóstico</a>
+        <a href="#proposta">Proposta de Solução</a>
+        <a href="#benchmarking">Benchmarking</a>
+        <a href="#conclusao">Conclusão</a>
+      </nav>
+    </aside>
+    <main id="content">
+      <section id="introducao">
+        <h2>Introdução</h2>
+        <p>
+          Em <span class="highlight">2024</span>, as despesas realizadas por
+          meio de <em>suprimento de fundos</em> (regime de adiantamento) no
+          Tribunal de Justiça do Estado do Pará (TJPA) somaram aproximadamente
+          <span class="highlight">R$ 6 milhões</span>. Desse total, cerca de
+          <span class="highlight">1/4 (R$ 1,5 milhão)</span> referiu-se a gastos
+          para custear sessões do <strong>Tribunal do Júri</strong> nas diversas
+          comarcas do Estado do Pará. Essas despesas englobaram itens como
+          combustível (aprox. R$ 24 mil), materiais de consumo diversos – água
+          mineral, sucos, bolachas, café, leite, açúcar, descartáveis etc. –
+          (aprox. R$ 846 mil), serviços prestados por pessoa física (refeições,
+          som; aprox. R$ 416 mil) e serviços prestados por pessoa jurídica
+          (refeições, hospedagem; aprox. R$ 279 mil), entre outros. Para
+          <strong>2025</strong>, projeta-se um aumento entre
+          <span class="highlight">15% e 20%</span> nessas despesas caso nenhuma
+          medida seja tomada, o que poderia elevar o gasto anual com suprimentos
+          de fundos para cerca de <span class="highlight">R$ 7 milhões</span>.
+        </p>
+        <p>
+          Diante desse cenário, este estudo tem por objetivo identificar as
+          causas do elevado dispêndio com suprimentos de fundos e
+          <strong>propor soluções</strong> para reduzir tais despesas,
+          especialmente por meio da contratação, via processo licitatório, de
+          serviços continuados que hoje são custeados por adiantamento. Em
+          particular, será avaliada a viabilidade de: (a) contratar serviços de
+          <strong>buffet</strong> (fornecimento de refeições – almoço, lanche e
+          jantar) para atendimento das sessões de júri; e (b) instituir
+          <strong
+            >contratos de fornecimento de materiais de consumo em geral</strong
+          >
+          (gêneros alimentícios e outros suprimentos) de forma centralizada por
+          pólo ou região no Estado. A adoção dessas medidas visa substituir
+          gastos pulverizados e muitas vezes não planejados por contratos
+          formais, buscando
+          <strong>reduzir as despesas com suprimento de fundos</strong> –
+          objetivo principal deste relatório – sem prejudicar o funcionamento
+          das atividades judiciais.
+        </p>
+      </section>
+      <section id="diagnostico">
+        <h2>Diagnóstico</h2>
+        <p>
+          O uso intensivo de suprimento de fundos no TJPA para custear despesas
+          previsíveis, como aquelas das sessões do júri, revela
+          <strong>ineficiências e riscos</strong> que justificam a mudança de
+          abordagem. A seguir, destacam-se os principais pontos de diagnóstico
+          da situação atual:
+        </p>
+        <ul>
+          <li>
+            <strong
+              >Fragmentação de compras e perda de economia de escala:</strong
+            >
+            Os suprimentos de fundos são concebidos para despesas urgentes,
+            eventuais ou de pequeno valor. Entretanto, no caso em análise, eles
+            vêm sendo utilizados recorrentemente para prover itens de mesma
+            natureza (alimentação, bebidas, materiais descartáveis) ao longo do
+            ano. Essa fragmentação impede o ganho em escala – cada comarca
+            adquire separadamente pequenas quantidades, muitas vezes a preços de
+            varejo, quando o Tribunal consome grandes volumes. Como resultado, o
+            custo unitário tende a ser mais alto do que seria em uma compra
+            unificada de maior porte.
+          </li>
+          <li>
+            <strong>Despesas planejáveis custeadas como emergenciais:</strong>
+            Grande parte dos gastos sob adiantamento no TJPA são previsíveis e
+            recorrentes – por exemplo, sabe-se de antemão que haverá diversas
+            sessões do Tribunal do Júri em cada ano, todas demandando refeições
+            para jurados e servidores, bem como consumo de água, café e outros
+            itens. Apesar disso, tais necessidades vêm sendo atendidas via
+            suprimento de fundos, que deveria ser usado apenas em caráter
+            excepcional. Conforme as normas vigentes, não se deve utilizar
+            suprimento de fundos para despesas que podem ser planejadas;
+            despesas previsíveis devem(submeter-se aos processos normais de
+            contratação pública. Ademais, é vedado fracionar despesas para
+            encaixá-las em limites de dispensa – gastos de mesma natureza ao
+            longo do exercício devem ser somados para verificar se ultrapassam o
+            limite de licitação dispensável.
+          </li>
+          <li>
+            <strong>Custos elevados e tendência de crescimento:</strong> A
+            manutenção do modelo atual pressiona o orçamento. Em 2024,
+            aproximadamente R$ 1,5 milhão foram gastos só com itens ligados às
+            sessões de júri via suprimento. Com a projeção de aumento de 15–20%
+            em 2025, esses custos continuariam a subir consideravelmente. Essa
+            tendência reflete não apenas a inflação setorial (ex.: alimentos,
+            combustível), mas também a ausência de contratos de longo prazo que
+            fixem preços ou gerem descontos por volume. Sem ação corretiva, os
+            gastos anuais podem ultrapassar R$ 7 milhões, onerando ainda mais o
+            Tribunal e reduzindo recursos disponíveis para outras
+            atividades-fim.
+          </li>
+          <li>
+            <strong>Desafios de controle e qualidade:</strong> A operação via
+            suprimento de fundos envolve diversos servidores requisitando
+            adiantamentos e contratando fornecedores locais, o que dificulta o
+            controle centralizado de qualidade e preço. Diferentes comarcas
+            podem estar pagando preços distintos pelos mesmos produtos/serviços
+            e contratando fornecedores de capacidades variadas. Há risco de
+            heterogeneidade na qualidade (por exemplo, refeições de padrão
+            inferior em alguns locais) e até problemas de conformidade na
+            prestação de contas. Em contraste, contratos centralizados permitem
+            fixar especificações de qualidade e níveis de serviço uniformes, com
+            fiscalização mais robusta.
+          </li>
+        </ul>
+        <div class="chart-container">
+          <canvas
+            id="chart-distribution"
+            role="img"
+            aria-label="Gráfico de pizza com distribuição de despesas de 2024"
+          ></canvas>
+        </div>
+      </section>
+      <section id="proposta">
+        <h2>Proposta de Solução</h2>
+        <p>
+          Para enfrentar os problemas levantados, propõe-se
+          <strong>substituir gradativamente</strong> as despesas atualmente
+          pagas por suprimento de fundos por despesas contratadas via processo
+          licitatório, em especial nos itens de maior peso financeiro (refeições
+          e materiais de consumo das sessões do júri). As principais ações
+          recomendadas são:
+        </p>
+        <h3>
+          1. Contratação de serviços de buffet para refeições (almoço, lanche,
+          jantar)
+        </h3>
+        <ul>
+          <li>
+            Realizar um <strong>pregão eletrônico</strong> visando a contratação
+            de empresa(s) especializada(s) em serviços de buffet e alimentação,
+            abrangendo o fornecimento de refeições completas para atender às
+            sessões do Tribunal do Júri em todo o Estado.
+          </li>
+          <li>
+            <strong>Cobertura regional:</strong> Estruturar a licitação em lotes
+            regionais ou contrato único estadual, garantindo atendimento capilar
+            ou maior poder de barganha para descontos.
+          </li>
+          <li>
+            <strong>Especificações e qualidade:</strong> Cardápios balanceados e
+            dimensionados por histórico, logística completa (preparo e entrega),
+            utensílios e padrões de higiene obrigatórios.
+          </li>
+          <li>
+            <strong>Vantagens esperadas:</strong> Redução de custos unitários de
+            15–25%, melhoria na qualidade e padronização, maior transparência
+            contratual.
+          </li>
+        </ul>
+        <h3>
+          2. Contratos de fornecimento de material de consumo (gêneros
+          alimentícios e suprimentos)
+        </h3>
+        <ul>
+          <li>
+            Licitar fornecimento regular de água mineral, café, sucos,
+            descartáveis etc., via <em>ata de registro de preços</em> anual.
+          </li>
+          <li>
+            <strong>Divisão em lotes regionais:</strong> Pólos regionais para
+            reduzir custos logísticos e incentivar fornecedores locais.
+          </li>
+          <li>
+            <strong>Condições contratuais:</strong> Quantidades estimadas com
+            flexibilidade, entregas programadas e cláusulas de reajuste por
+            índice oficial.
+          </li>
+          <li>
+            <strong>Vantagens esperadas:</strong> Economia sobre R$ 846 mil/ano,
+            padronização, redução de processos internos.
+          </li>
+        </ul>
+        <h3>3. Revisão de outras despesas correlatas</h3>
+        <p>
+          Avaliar licitação para hospedagem, deslocamentos, sonorização e
+          locação de equipamentos, sempre que gastos anuais previsíveis superem
+          limites de dispensa.
+        </p>
+        <h3>Estimativa de economia</h3>
+        <p>
+          Com as medidas propostas, projeta-se uma economia conservadora de 15%
+          sobre R$ 1,56 milhão/ano (~R$ 234 mil) até otimista de 20% (~R$ 300
+          mil), superando o aumento projetado de 2025 e reduzindo o gasto
+          absoluto.
+        </p>
+        <div class="chart-container">
+          <canvas
+            id="chart-projection"
+            role="img"
+            aria-label="Gráfico de barras mostrando projeção de gastos e economia potencial"
+          ></canvas>
+        </div>
+      </section>
+      <section id="benchmarking">
+        <h2>Benchmarking (Comparativo com Outros Tribunais)</h2>
+        <ul>
+          <li>
+            <strong>Tribunal de Justiça de São Paulo (TJSP):</strong>
+            Aglutinação de contratos economizou R$ 2,7 milhões em cinco anos
+            (–32% em manutenção predial; –42% em outros contratos).
+          </li>
+          <li>
+            <strong>Tribunal de Justiça da Bahia (TJBA):</strong> Relançou
+            licitação de copeiragem e projetou economia de R$ 820 mil/ano.
+          </li>
+          <li>
+            <strong
+              >Tribunal Regional do Trabalho da 16ª Região (TRT-MA):</strong
+            >
+            Utiliza ata de registro de preços para coffee break, maximizando
+            economicidade.
+          </li>
+          <li>
+            Outros TJs (TJAC, TJCE, TJMT) adotam contratos ou registros de
+            preços para buffet e materiais, enfatizando compras planejadas e
+            economia de escala.
+          </li>
+        </ul>
+      </section>
+      <section id="conclusao">
+        <h2>Conclusão</h2>
+        <p>
+          As análises aqui expostas evidenciam que o Tribunal de Justiça do Pará
+          pode <strong>reduzir significativamente</strong> suas despesas com
+          suprimento de fundos adotando medidas estruturais de planejamento e
+          contratação. A migração para contratos licitatórios bem estruturados
+          trará economia de dois dígitos percentuais, maior transparência,
+          padronização e qualidade, sem comprometer as atividades do Tribunal do
+          Júri. Recomenda-se formar um grupo de trabalho para conduzir as
+          licitações, monitorar resultados e aperfeiçoar continuamente a gestão
+          financeira da instituição.
+        </p>
+      </section>
+    </main>
+    <button id="backToTop" aria-label="Voltar ao topo">↑</button>
+    <div id="toast" role="status" aria-live="polite"></div>
+    <footer class="sources" role="contentinfo">
+      <h3>Fontes Consultadas</h3>
+      <a href="#">Termo de Referência – Pregão Eletrônico nº 003/2021 – TJPA</a>
+      <a href="#">Estudos Preliminares – Contratação de Buffet – TJPA (2021)</a>
+      <a href="#">Instrução Normativa DG nº 105/2024 – CNJ</a>
+      <a href="#"
+        >Notícia TJSP – “Tribunal economiza mais de R$ 2,7 milhões com contratos
+        de manutenção” (2019)</a
+      >
+      <a href="#"
+        >Notícia TJBA – “PJBA economizará mais de R$ 800 mil com nova licitação
+        de copeiragem” (2020)</a
+      >
+      <a href="#">Estudo Técnico TRT16 – Contratação de Coffee-break (2020)</a>
+      <a href="#">Documentos de licitação de outros TJs (TJAC, TJCE)</a>
+    </footer>
+    <script>
+      // Progress bar
+      const progressBar = document.getElementById("progressBar");
+      window.addEventListener("scroll", () => {
+        const scrollY = window.scrollY;
+        const docHeight = document.body.scrollHeight - window.innerHeight;
+        const width = (scrollY / docHeight) * 100;
+        progressBar.style.width = width + "%";
+        document.getElementById("backToTop").style.display =
+          scrollY > 300 ? "block" : "none";
+      });
+      // Theme toggle
+      const themeToggle = document.getElementById("themeToggle");
+      const savedTheme = localStorage.getItem("theme");
+      const prefersDark = window.matchMedia(
+        "(prefers-color-scheme: dark)"
+      ).matches;
+      document.body.classList.toggle(
+        "dark",
+        savedTheme === "dark" || (!savedTheme && prefersDark)
+      );
+      themeToggle.addEventListener("click", () => {
+        const isDark = document.body.classList.toggle("dark");
+        localStorage.setItem("theme", isDark ? "dark" : "light");
+      });
+      // Sidebar
+      document.getElementById("menuToggle").addEventListener("click", () => {
+        document.getElementById("sidebar").classList.toggle("open");
+      });
+      document.querySelectorAll("#sidebar a").forEach((a) =>
+        a.addEventListener("click", () => {
+          document.getElementById("sidebar").classList.remove("open");
+        })
+      );
+      // Section animations
+      const sections = document.querySelectorAll("section");
+      const obs = new IntersectionObserver(
+        (entries) => {
+          entries.forEach(
+            (e) => e.isIntersecting && e.target.classList.add("visible")
+          );
+        },
+        { threshold: 0.1 }
+      );
+      sections.forEach((s) => obs.observe(s));
+      // Back to top
+      document.getElementById("backToTop").addEventListener("click", () => {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+      // Toast
+      const toast = document.getElementById("toast");
+      function showToast(msg) {
+        toast.textContent = msg;
+        toast.classList.add("show");
+        setTimeout(() => toast.classList.remove("show"), 3000);
+      }
+      window.addEventListener("online", () => showToast("Você está online"));
+      window.addEventListener("offline", () => showToast("Você está offline"));
+      // Print
+      document
+        .getElementById("printBtn")
+        .addEventListener("click", () => window.print());
+      // Push notifications
+      if ("Notification" in window && navigator.serviceWorker) {
+        Notification.requestPermission().then(
+          (perm) =>
+            perm === "granted" &&
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification("Relatório disponível", {
+                body: "O estudo foi atualizado e está disponível offline.",
+              });
+            })
+        );
+      }
+      // Charts
+      const distData = {
+        labels: ["Combustível", "Consumo Geral", "Serviços PF", "Serviços PJ"],
+        datasets: [{ data: [24000, 846000, 416000, 279000] }],
+      };
+      const projData = {
+        labels: ["2024", "2025 (max)"],
+        datasets: [
+          { label: "Gastos (R$)", data: [6000000, 7000000] },
+          { label: "Economia Potencial (R$)", data: [0, 300000] },
+        ],
+      };
+      window.addEventListener("load", () => {
+        new Chart(document.getElementById("chart-distribution"), {
+          type: "pie",
+          data: distData,
+        });
+        new Chart(document.getElementById("chart-projection"), {
+          type: "bar",
+          data: projData,
+          options: { scales: { y: { beginAtZero: true } } },
+        });
+      });
+      // Service Worker
+      if ("serviceWorker" in navigator)
+        navigator.serviceWorker.register("service-worker.js");
+    </script>
+  </body>
+</html>
